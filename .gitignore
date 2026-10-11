@@ -1,0 +1,5 @@
+# Only the three public source/documentation files are eligible for tracking.
+*
+!socket_exporter.py
+!README.md
+!.gitignore
