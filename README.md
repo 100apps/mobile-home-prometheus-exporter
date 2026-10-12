@@ -1,8 +1,67 @@
 # 移动爱家 / AndLink 原始遥测 Prometheus exporter
 
-一个 Python 文件，标准库实现、无第三方依赖。读取**明确选定**的插座，将云端 `power`、`volts`、`current`、`powerConsumption` 转为 Prometheus 原始值指标。只提供 `/metrics` 和 `/healthz`，没有看板、开关、清零或设备配置接口。
+标准库实现、无第三方依赖。原入口读取显式选定设备，另提供自动发现与后台缓存入口。读取**明确选定**的插座，将云端 `power`、`volts`、`current`、`powerConsumption` 转为 Prometheus 原始值指标。只提供 `/metrics` 和 `/healthz`，没有看板、开关、清零或设备配置接口。
 
 **这些字段的单位、倍率和设备上报周期尚未实证确认。** 不把它们标为已验证 W/V/A/kWh，不用电压乘电流替代有功功率，不把缺失值填成 0。此前实机返回型号名为 S30m、类型为 `590513`；APK 中 S30c 类型 `30944` 不足以证明两者单位一致。
+
+## 自动发现与后台缓存模式
+
+新增 `auto_exporter.py`，使用标准库、无第三方依赖。它保留原入口 `socket_exporter.py` 的显式设备选择模式；自动模式则读取同一账号全部类型 `30944` / `590513` 的插座，每 300 秒发现新增、移除或重命名。**使用自动模式即授权读取该账号下这些兼容插座**；仅监控特定插座时继续使用原入口。
+
+```sh
+python auto_exporter.py --config config.toml --check-config
+python auto_exporter.py --config config.toml
+```
+
+配置和账号环境变量沿用原入口。`[devices]` 仍须提供至少一个合法占位项供配置校验；启动后替换为自动发现的设备，不受原显式映射的 8 个设备限制。设备标签为设备 ID 的 SHA-256 摘要前 16 位，名称通过 `andlink_device_info` 暴露；这些公开标签仍应限制访问。
+
+- 独立后台线程每 2 秒调度一轮，设备请求串行，不重叠。慢请求、设备数量和退避会延长实际间隔；`cache_ttl` 不改变自动模式的 2 秒调度或 60 秒有效期。
+- 内存中保存最近 60 秒的成功样本，`/metrics` 返回最新成功读数，不返回均值，也不执行云端 I/O。不抓取 `/metrics` 时后台仍持续采集。
+- 单设备读取失败保留其最后成功读数，失败不更新成功时间戳。满 60 秒后省略该设备的原始值，曲线断开；明确离线的读数同样不输出。失败设备单独指数退避，其他设备继续更新。
+- 429 / `rate_limited` 尊重服务端等待时间，全局暂停采集。认证失败或令牌过期停止读取，需要排查后手动重启；不会无限尝试密码登录。
+- 自动模式通过 `checkConnected=false` 读取已有云端遥测，不触发同步连接检查。云端读数变化不证明设备每 2 秒测量；单位和倍率仍未验证。
+- 仅内存缓存，无本地历史或 token 文件；历史持久化交给 Prometheus。缓存内的旧值会以当前 scrape 时间入库，必须结合年龄和缓存标记解释，不能当作新测量。
+
+| 新增指标 | 说明 |
+|---|---|
+| `andlink_device_info{device,name}` | 稳定设备标签与云端展示名称 |
+| `andlink_device_data_age_seconds` | 最后成功云端读取距今秒数，不是设备测量年龄 |
+| `andlink_device_fetch_up` | 最近一次设备读取是否成功 |
+| `andlink_device_cache_stale` | 当前有效缓存来自失败后的保留，或已超过两个调度周期；过期后省略 |
+
+### Docker、Prometheus 和 Grafana
+
+`deploy/` 提供通用配置：Prometheus 3.15.0、Grafana 13.2.3、Python 3.13；Prometheus 每 10 秒抓取，数据保留 365 天，使用持久 Docker 卷；Grafana 看板自动发现插座、可筛选设备，适配手机与桌面，并显示缓存年龄和读取状态。
+
+```sh
+cd deploy
+cp .env.example .env
+cp config.example.toml config.toml
+chmod 600 .env
+chmod 644 config.toml  # 示例只含运行参数，账号通过 .env 提供
+# 编辑 .env 填写账号和自设 Grafana 密码。
+# 局域网访问时，把 BIND_ADDRESS 设为服务器局域网地址，
+# GRAFANA_ROOT_URL 设为 http://该地址:3000。
+docker compose up -d
+```
+
+访问 Grafana `http://服务器地址:3000/d/smart-plugs`（用户 `admin`，密码来自自设 `.env`），Prometheus `http://服务器地址:9090`（无登录鉴权，请限制网络访问）。默认只绑定回环地址，exporter 不发布宿主机端口。
+
+三个容器都配置 `restart: unless-stopped`；还需要在宿主系统启用 Docker 开机启动。iStoreOS / OpenWrt 可执行 `/etc/init.d/dockerd enable`，其他系统按其服务管理器配置。容器被手动停止后不会在 Docker 重启时恢复，需要重新执行 `docker compose up -d`。
+
+Grafana 管理员密码环境变量只用于初始化；已有数据库需要通过 `grafana cli admin reset-admin-password --password-from-stdin` 重置，同时更新本地 `.env`。不要提交真实账号、密码或数据库目录。
+
+### 离线验证
+
+```sh
+python tests/test_cache.py
+```
+
+使用合成账号和响应，验证缓存过期、失败保留、旧缓存标记、独立后台采集、阻塞云端请求时 HTTP 指标不等待、无重叠采集以及限流退避；不登录、不联网、不含真实设备 ID。
+
+## 原入口：手动选择设备
+
+下文说明 `socket_exporter.py` 的原有行为；它按 scrape 触发读取、失败清空缓存，区别于上述自动后台模式。
 
 ## 启动
 

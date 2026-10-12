@@ -1,0 +1,589 @@
+{
+  "uid": "smart-plugs",
+  "title": "智能插座 · 电流 / 电压 / 功率",
+  "schemaVersion": 41,
+  "version": 1,
+  "timezone": "Asia/Shanghai",
+  "refresh": "10s",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "tags": [
+    "smart-plugs",
+    "AndLink"
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "采集说明",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "后台每 **2 秒调度**云端采集，慢请求不重叠，限流时退避。Prometheus 每 **10 秒**读取内存，历史保留 **365 天**。读取失败时最多保留 **60 秒**的最后成功读数，之后曲线断开；请结合数据年龄、读取状态和缓存标记判断。云端读取时间不代表设备测量时间。单位 / 倍率未验证。自动发现同账号插座，每 5 分钟更新。"
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "HTTP 采集状态",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "smart-plug-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{job=\"mobile_home\",instance=\"smart-plugs\"}",
+          "instant": true,
+          "legendFormat": "{{device}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "暂无数据",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "云端整轮读取状态",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "smart-plug-prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "andlink_exporter_up{instance=\"smart-plugs\"}",
+          "instant": true,
+          "legendFormat": "{{device}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "暂无数据",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "一分钟内缓存可用",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "smart-plug-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(andlink_device_sample_available{instance=\"smart-plugs\",device=~\"$device\"}) * on(device) group_left(name) andlink_device_info{instance=\"smart-plugs\"}",
+          "instant": true,
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "暂无数据",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "最后成功读数距今（秒）",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "smart-plug-prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "andlink_device_data_age_seconds{instance=\"smart-plugs\",device=~\"$device\"} * on(device) group_left(name) andlink_device_info{instance=\"smart-plugs\"}",
+          "instant": true,
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "暂无数据",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 60
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "功率 · 原始值",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "smart-plug-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(andlink_raw_parameter{job=\"mobile_home\",instance=\"smart-plugs\",device=~\"$device\",parameter=\"power\"}) * on(device) group_left(name) andlink_device_info{instance=\"smart-plugs\"}",
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "暂无数据",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "电压 · 原始值",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "smart-plug-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 7,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(andlink_raw_parameter{job=\"mobile_home\",instance=\"smart-plugs\",device=~\"$device\",parameter=\"volts\"}) * on(device) group_left(name) andlink_device_info{instance=\"smart-plugs\"}",
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "暂无数据",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "电流 · 原始值",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "smart-plug-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(andlink_raw_parameter{job=\"mobile_home\",instance=\"smart-plugs\",device=~\"$device\",parameter=\"current\"}) * on(device) group_left(name) andlink_device_info{instance=\"smart-plugs\"}",
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "暂无数据",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "电量 · 原始值（累计语义未验证）",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "smart-plug-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 15,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(andlink_raw_parameter{job=\"mobile_home\",instance=\"smart-plugs\",device=~\"$device\",parameter=\"powerConsumption\"}) * on(device) group_left(name) andlink_device_info{instance=\"smart-plugs\"}",
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "暂无数据",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "采集错误原因",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "smart-plug-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 27,
+        "w": 24,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "andlink_exporter_error{instance=\"smart-plugs\"} == 1",
+          "instant": true,
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "最新云端读取成功",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "smart-plug-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 12,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "andlink_device_fetch_up{instance=\"smart-plugs\",device=~\"$device\"} * on(device) group_left(name) andlink_device_info{instance=\"smart-plugs\"}",
+          "instant": true,
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "暂无数据",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "正在使用旧缓存（1=是）",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "smart-plug-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 23,
+        "w": 12,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "andlink_device_cache_stale{instance=\"smart-plugs\",device=~\"$device\"} * on(device) group_left(name) andlink_device_info{instance=\"smart-plugs\"}",
+          "instant": true,
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "暂无数据",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "device",
+        "label": "插座",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "smart-plug-prometheus"
+        },
+        "query": "query_result(andlink_device_info{instance=\"smart-plugs\"})",
+        "definition": "query_result(andlink_device_info{instance=\"smart-plugs\"})",
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "regex": "/device=\"(?<value>[^\"]+)\".*name=\"(?<text>[^\"]+)\"/"
+      }
+    ]
+  }
+}

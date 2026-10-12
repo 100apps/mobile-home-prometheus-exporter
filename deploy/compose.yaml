@@ -1,0 +1,48 @@
+name: mobile-home-monitoring
+services:
+  prometheus:
+    image: prom/prometheus:v3.15.0
+    restart: unless-stopped
+    ports: ["${BIND_ADDRESS:-127.0.0.1}:9090:9090"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=365d
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+  grafana:
+    image: grafana/grafana:13.2.3
+    restart: unless-stopped
+    ports: ["${BIND_ADDRESS:-127.0.0.1}:3000:3000"]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/smart-plugs.json
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+  exporter:
+    image: python:3.13-slim
+    restart: unless-stopped
+    user: "65534:65534"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      SOCKET_EXPORTER_USERNAME: ${SOCKET_EXPORTER_USERNAME:?Set SOCKET_EXPORTER_USERNAME in .env}
+      SOCKET_EXPORTER_PASSWORD: ${SOCKET_EXPORTER_PASSWORD:?Set SOCKET_EXPORTER_PASSWORD in .env}
+    command: [python, /app/auto_exporter.py, --config, /run/config.toml, --listen, 0.0.0.0, --cache-ttl, "10"]
+    volumes:
+      - ../socket_exporter.py:/app/socket_exporter.py:ro
+      - ../auto_exporter.py:/app/auto_exporter.py:ro
+      - ./config.toml:/run/config.toml:ro
+volumes:
+  prometheus-data:
+  grafana-data:

@@ -1,0 +1,9 @@
+# Credentials are supplied by Compose from the untracked .env file.
+listen = "0.0.0.0"
+port = 9188
+timeout = 30
+# Used by the original parser; auto_exporter has a fixed 2s schedule / 60s cache.
+cache_ttl = 10
+[devices]
+# Parser placeholder; auto_exporter replaces this with discovered sockets.
+automatic = "name:auto-discovery-placeholder"

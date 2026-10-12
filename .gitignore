@@ -1,5 +1,25 @@
-# Only the three public source/documentation files are eligible for tracking.
+# Explicit public-source allowlist. Local secrets and data stay ignored.
 *
-!socket_exporter.py
-!README.md
+!.github/
+!.github/workflows/
+!.github/workflows/test.yml
 !.gitignore
+!README.md
+!auto_exporter.py
+!deploy/
+!deploy/.env.example
+!deploy/compose.yaml
+!deploy/config.example.toml
+!deploy/grafana/
+!deploy/grafana/dashboards/
+!deploy/grafana/dashboards/smart-plugs.json
+!deploy/grafana/provisioning/
+!deploy/grafana/provisioning/dashboards/
+!deploy/grafana/provisioning/dashboards/smart-plugs.yaml
+!deploy/grafana/provisioning/datasources/
+!deploy/grafana/provisioning/datasources/prometheus.yaml
+!deploy/prometheus/
+!deploy/prometheus/prometheus.yml
+!socket_exporter.py
+!tests/
+!tests/test_cache.py

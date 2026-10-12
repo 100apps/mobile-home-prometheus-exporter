@@ -1,0 +1,11 @@
+apiVersion: 1
+providers:
+  - name: Smart Plugs
+    orgId: 1
+    folder: 智能插座
+    type: file
+    disableDeletion: true
+    editable: true
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards
